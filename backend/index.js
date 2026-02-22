@@ -10,7 +10,7 @@ import employeeRoutes from "./routes/employeeRoutes.js";
 import leaveRoutes from "./routes/leaveRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import payrollRoutes from "./routes/payrollRoutes.js";
-
+import auditRoutes from "./routes/auditRoutes.js";
 
 dotenv.config()
 
@@ -28,8 +28,8 @@ app.use("/api/employees", employeeRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/attendance", attendanceRoutes);
-
 app.use("/api/payroll", payrollRoutes);
+app.use("/api/audit", auditRoutes);
 
 console.log("JWT_SECRET:", process.env.JWT_SECRET);
 

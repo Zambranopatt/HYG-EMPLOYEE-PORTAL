@@ -1,5 +1,6 @@
 import Payroll from "../models/Payroll.js";
 import User from "../models/User.js";
+import { logAction } from "../utils/logAction.js";
 
 // Create / Generate Payroll (Admin)
 export const generatePayroll = async (req, res) => {
@@ -8,7 +9,10 @@ export const generatePayroll = async (req, res) => {
 
     // Check if payroll for this month/year already exists
     const existing = await Payroll.findOne({ user: userId, month, year });
-    if (existing) return res.status(400).json({ message: "Payroll already exists for this employee for this month" });
+    if (existing)
+      return res.status(400).json({
+        message: "Payroll already exists for this employee for this month",
+      });
 
     const totalSalary = baseSalary + bonuses - deductions - leaveDeduction;
 
@@ -21,6 +25,15 @@ export const generatePayroll = async (req, res) => {
       month,
       year,
       totalSalary,
+    });
+
+    // ✅ Audit Log
+    await logAction({
+      userId: req.user.id,
+      action: "GENERATED_PAYROLL",
+      targetId: payroll._id,
+      targetModel: "Payroll",
+      details: `Payroll generated for ${month}/${year}`,
     });
 
     res.status(201).json({ message: "Payroll generated", payroll });
@@ -40,6 +53,16 @@ export const getPayrollByUser = async (req, res) => {
     }
 
     const payrolls = await Payroll.find({ user: userId }).sort({ year: -1, month: -1 });
+
+    // Optional: log viewing payrolls if desired
+    // await logAction({
+    //   userId: req.user.id,
+    //   action: "VIEWED_PAYROLL",
+    //   targetId: userId,
+    //   targetModel: "Payroll",
+    //   details: `Viewed payroll history`,
+    // });
+
     res.json(payrolls);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -49,7 +72,17 @@ export const getPayrollByUser = async (req, res) => {
 // Get all Payrolls (Admin)
 export const getAllPayrolls = async (req, res) => {
   try {
-    const payrolls = await Payroll.find().populate("user", "name email department position").sort({ year: -1, month: -1 });
+    const payrolls = await Payroll.find()
+      .populate("user", "name email department position")
+      .sort({ year: -1, month: -1 });
+
+    // Optional: log viewing all payrolls
+    // await logAction({
+    //   userId: req.user.id,
+    //   action: "VIEWED_ALL_PAYROLLS",
+    //   details: `Admin viewed all payrolls`,
+    // });
+
     res.json(payrolls);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -70,6 +103,15 @@ export const updatePayroll = async (req, res) => {
     payroll.totalSalary = payroll.baseSalary + payroll.bonuses - payroll.deductions - payroll.leaveDeduction;
 
     await payroll.save();
+
+    // ✅ Audit Log
+    await logAction({
+      userId: req.user.id,
+      action: "UPDATED_PAYROLL",
+      targetId: payroll._id,
+      targetModel: "Payroll",
+      details: `Payroll updated: bonuses=${payroll.bonuses}, deductions=${payroll.deductions}, leaveDeduction=${payroll.leaveDeduction}`,
+    });
 
     res.json({ message: "Payroll updated", payroll });
   } catch (error) {

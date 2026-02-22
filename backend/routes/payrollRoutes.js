@@ -1,5 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware.js";
+import { authorizeRoles } from "../middleware/authorize.js";
 import {
   generatePayroll,
   getPayrollByUser,
@@ -8,19 +9,35 @@ import {
 } from "../controllers/payrollController.js";
 
 const router = express.Router();
-router.use(protect);
 
-const adminOnly = (req, res, next) => {
-  if (req.user.role !== "admin") return res.status(403).json({ message: "Admin access only" });
-  next();
-};
+// Admin / HR routes
+router.post(
+  "/",
+  protect,
+  authorizeRoles("superadmin", "hr"),
+  generatePayroll
+);
 
-// Admin routes
-router.post("/", adminOnly, generatePayroll);          // Generate payroll
-router.get("/", adminOnly, getAllPayrolls);           // View all payrolls
-router.put("/:id", adminOnly, updatePayroll);         // Update payroll
+router.get(
+  "/",
+  protect,
+  authorizeRoles("superadmin", "admin", "hr"),
+  getAllPayrolls
+);
 
-// Employee routes
-router.get("/user/:userId", getPayrollByUser);        // Employee or admin view payroll
+router.put(
+  "/:id",
+  protect,
+  authorizeRoles("superadmin", "hr"),
+  updatePayroll
+);
+
+// Employee or admin view payroll
+router.get(
+  "/user/:userId",
+  protect,
+  authorizeRoles("superadmin", "admin", "hr", "employee"),
+  getPayrollByUser
+);
 
 export default router;

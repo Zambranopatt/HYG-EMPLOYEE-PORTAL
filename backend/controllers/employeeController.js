@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import { logAction } from "../utils/logAction.js";
 
 // GET ALL EMPLOYEES (Admin only)
 export const getAllEmployees = async (req, res) => {
@@ -15,6 +16,7 @@ export const getEmployeeById = async (req, res) => {
   try {
     const employee = await User.findById(req.params.id).select("-password");
     if (!employee) return res.status(404).json({ message: "Employee not found" });
+
     res.json(employee);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -43,6 +45,15 @@ export const createEmployee = async (req, res) => {
       position,
     });
 
+    // ✅ Audit log
+    await logAction({
+      userId: req.user.id, // Admin creating
+      action: "CREATED_EMPLOYEE",
+      targetId: newEmployee._id,
+      targetModel: "User",
+      details: `Employee ${newEmployee.name} (${newEmployee.email}) created`,
+    });
+
     res.status(201).json({ message: "Employee created", newEmployee });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -64,6 +75,15 @@ export const updateEmployee = async (req, res) => {
 
     await employee.save();
 
+    // ✅ Audit log
+    await logAction({
+      userId: req.user.id, // Admin updating
+      action: "UPDATED_EMPLOYEE",
+      targetId: employee._id,
+      targetModel: "User",
+      details: `Employee updated: name=${employee.name}, email=${employee.email}, department=${employee.department}, position=${employee.position}`,
+    });
+
     res.json({ message: "Employee updated", employee });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -77,6 +97,16 @@ export const deleteEmployee = async (req, res) => {
     if (!employee) return res.status(404).json({ message: "Employee not found" });
 
     await employee.deleteOne();
+
+    // ✅ Audit log
+    await logAction({
+      userId: req.user.id, // Admin deleting
+      action: "DELETED_EMPLOYEE",
+      targetId: employee._id,
+      targetModel: "User",
+      details: `Employee ${employee.name} (${employee.email}) deleted`,
+    });
+
     res.json({ message: "Employee deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
